@@ -18,6 +18,7 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Factory class to create the HTTP Sink.
@@ -58,7 +59,17 @@ public class HttpSinkFactory {
         PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager();
         connectionManager.setMaxTotal(maxHttpConnections);
         connectionManager.setDefaultMaxPerRoute(maxHttpConnections);
-        HttpClientBuilder builder = HttpClients.custom().setConnectionManager(connectionManager).setDefaultRequestConfig(requestConfig);
+        // Validate stale connections before reuse (default -1 = disabled).
+        connectionManager.setValidateAfterInactivity(httpSinkConfig.getSinkHttpConnectionValidateInactivityMs());
+        HttpClientBuilder builder = HttpClients.custom().setConnectionManager(connectionManager)
+                .setDefaultRequestConfig(requestConfig)
+                // Force-close connections that exceed the TTL so the pool periodically
+                // reopens TCP connections — this re-runs kube-proxy DNAT and redistributes
+                // traffic across backend pods instead of pinning to one for the pod lifetime.
+                .setConnectionTimeToLive(httpSinkConfig.getSinkHttpConnectionTtlMs(), TimeUnit.MILLISECONDS)
+                // Background evictor that closes idle connections older than the threshold,
+                // preventing accumulation of half-open connections to restarted pods.
+                .evictIdleConnections(httpSinkConfig.getSinkHttpConnectionIdleEvictMs(), TimeUnit.MILLISECONDS);
         if (httpSinkConfig.isSinkHttpOAuth2Enable()) {
             OAuth2Credential oauth2 = new OAuth2Credential(
                     new FirehoseInstrumentation(statsDReporter, OAuth2Credential.class),

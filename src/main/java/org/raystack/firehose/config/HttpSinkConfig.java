@@ -37,6 +37,18 @@ public interface HttpSinkConfig extends AppConfig {
     @DefaultValue("10")
     Integer getSinkHttpMaxConnections();
 
+    @Key("SINK_HTTP_CONNECTION_TTL_MS")
+    @DefaultValue("30000")
+    Long getSinkHttpConnectionTtlMs();
+
+    @Key("SINK_HTTP_CONNECTION_IDLE_EVICT_MS")
+    @DefaultValue("30000")
+    Long getSinkHttpConnectionIdleEvictMs();
+
+    @Key("SINK_HTTP_CONNECTION_VALIDATE_INACTIVITY_MS")
+    @DefaultValue("2000")
+    Integer getSinkHttpConnectionValidateInactivityMs();
+
     @Key("SINK_HTTP_SERVICE_URL")
     String getSinkHttpServiceUrl();
 
