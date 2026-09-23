@@ -86,4 +86,28 @@ public class HttpSinkFactoryTest {
 
         mockServer.verify(request().withPath("/oauth2/token"), VerificationTimes.exactly(1));
     }
+
+    @Test(expected = Test.None.class)
+    public void shouldCreateHttpClientWithConnectionTtlAndIdleEvictionDefaults() {
+        Map<String, String> configuration = new HashMap<>();
+        configuration.put("SINK_HTTP_SERVICE_URL", "http://127.0.0.1:1080/api");
+        AbstractSink sink = HttpSinkFactory.create(configuration, statsDReporter, stencilClient);
+
+        // The client should be usable - proving TTL/evictor/validate settings don't break construction
+        sink.pushMessage(messages);
+        mockServer.verify(request().withPath("/api"), VerificationTimes.atLeast(1));
+    }
+
+    @Test(expected = Test.None.class)
+    public void shouldAcceptCustomConnectionTtlAndEvictionConfig() {
+        Map<String, String> configuration = new HashMap<>();
+        configuration.put("SINK_HTTP_SERVICE_URL", "http://127.0.0.1:1080/api");
+        configuration.put("SINK_HTTP_CONNECTION_TTL_MS", "5000");
+        configuration.put("SINK_HTTP_CONNECTION_IDLE_EVICT_MS", "10000");
+        configuration.put("SINK_HTTP_CONNECTION_VALIDATE_INACTIVITY_MS", "1000");
+        AbstractSink sink = HttpSinkFactory.create(configuration, statsDReporter, stencilClient);
+
+        sink.pushMessage(messages);
+        mockServer.verify(request().withPath("/api"), VerificationTimes.atLeast(1));
+    }
 }
